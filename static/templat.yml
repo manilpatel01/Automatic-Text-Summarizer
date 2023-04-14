@@ -1,0 +1,169 @@
+Resources:
+  MyApiGateway:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: MyApiGateway
+
+  MyApiResource:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ParentId: !GetAtt MyApiGateway.RootResourceId
+      PathPart: scrapping
+      
+  MyApiMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      ResourceId: !Ref MyApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${MyFunction.Arn}/invocations
+        TimeoutInMillis: 29000
+        IntegrationResponses:
+            - StatusCode: 200
+              ResponseParameters:
+                method.response.header.Access-Control-Allow-Origin: "'*'"
+                method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+                method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: "Empty"
+          ResponseParameters:
+            method.response.header.Access-Control-Allow-Origin: true
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+      
+  MyApiDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn:
+      - MyApiMethod
+    Properties:
+      RestApiId: !Ref MyApiGateway
+      StageName: prod
+
+  MyApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref MyFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApiGateway}/*/*/scrapping
+
+  MyFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: frontendhtml
+        S3Key: Webscrapping.zip
+      FunctionName: Serverless
+      Handler: lambda_function.lambda_handler
+      Role: !GetAtt MyFunctionRole.Arn
+      Runtime: python3.9
+      Timeout: 123
+      Role: 'arn:aws:iam::454499597579:role/LabRole'
+      Layers:
+        - !Ref MyLayer
+  MyLayer:
+    Type: AWS::Lambda::LayerVersion
+    Properties:
+      Content:
+        S3Bucket: frontendhtml
+        S3Key: Lambdadependency.zip
+      CompatibleRuntimes:
+        - python3.9
+
+  Ec2key:
+    Type: AWS::EC2::KeyPair
+    Properties:
+      KeyName: Project
+      KeyType: rsa
+
+  MyInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-007855ac798b5175e
+      InstanceType: t2.micro
+      KeyName: !Ref Ec2key
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+          sudo pip3 install awscli
+          sudo aws configure set aws_access_key_id ASIAWTUSJPUFX6D2MGM2
+          sudo aws configure set aws_secret_access_key cwzYSoL+CocywSf8wU4Sp/0MdN2UQKYsXPcbDW8W
+          sudo aws configure set aws_session_token FwoGZXIvYXdzEO///////////wEaDAy/Zdi4iTor61SFoyLAAdp2x87eEiukmddoSLnXL4cRBzAYAlq1bGQxdSwM+Z8TQpVlMPLThxE8/BFx1y7xUeDQypgomi36+J90mCo220ixd+GTwKiFe0cDdmTLORf63PvAYvc2zeqPMNFBhzy36IvhizxuJXEpI9N9zLpdJSfDXbbkxPwdv0zgzsQJFI0oDeg1TmoYqpT2reF+CfDwcH6QKqckFwQbxkDlhBGVPR7fGvm5kVLSipUZ/qC+KoN3nZuFdPzz4ukV25zOuDWS0yj2ytyhBjItoBCtzyV0t0vSYTqGqF7iVDoUxWoXPdEo6Tau3YbxTkxyeC0An4QW89TfhhXP
+          sudo aws configure set region us-east-1
+          sudo aws s3 cp s3://frontendhtml/index.html /home/ubuntu
+          sudo aws s3 cp s3://frontendhtml/app.py /home/ubuntu
+          sudo aws s3 cp s3://frontendhtml/requirements.txt /home/ubuntu 
+          sudo aws s3 cp s3://frontendhtml/Doc_Summ.py /home/ubuntu
+          sudo pip3 install -r /home/ubuntu/requirements.txt
+          sudo python3 -c "import nltk; nltk.download('punkt')"
+          sudo python3 -c "import nltk; nltk.download('stopwords')"
+          export FLASK_APP=/home/ubuntu/app.py
+          cd /home/ubuntu          
+          echo 'export API_GATEWAY_URL="https://${MyApiGateway}.execute-api.${AWS::Region}.amazonaws.com/prod/scrapping"' >> /etc/environment
+          source /etc/environment
+          sudo python3 -m flask run --host=0.0.0.0 -p 80
+      SecurityGroupIds:
+        - !Ref MySecurityGroup
+
+  MySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable HTTP and SSH access
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+  
+  MySQSQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: Broker
+
+  MySQSQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: "Allow-SQS-SendMessage"
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::454499597579:role/LabRole
+            Action:
+              - sqs:SendMessage
+              - sqs:DeleteMessage
+              - sqs:GetQueueAttributes
+              - sqs:GetQueueUrl
+              - sqs:ChangeMessageVisibility
+              - sqs:ReceiveMessage
+            Resource: !GetAtt MySQSQueue.Arn
+      Queues:
+        - !Ref MySQSQueue
+  
+  S3Bucket:
+    Type: AWS::S3::Bucket
+    Description: S3 bucket that stores the Input of the user
+    Properties:
+      BucketName: Inputtext
+    BucketEncryption: 
+        ServerSideEncryptionConfiguration: 
+        - ServerSideEncryptionByDefault:
+            SSEAlgorithm: AES256

@@ -1,0 +1,111 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    border: none;
+    outline: none;
+    box-shadow: none;
+}
+
+body {
+    overflow: hidden;
+}
+
+header {
+    width: 100vw;
+    height: 10vh;
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: black;
+}
+
+header h1 {
+    font-size: xx-large;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    text-align: center;
+    color: white;
+    line-height: 10vh;
+}
+
+.container {
+    margin: 15vh auto;
+    width: 95vw;
+    height: max-content;
+}
+
+.container .flex-box {
+    margin: 5vh auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flex-box .text-area,
+.flex-box .output {
+    width: 45vw;
+    height: max-content;
+}
+
+#loading {
+    display: none;
+    /* background-color: rgba(63, 63, 62, 0.445); */
+    transform: translate(250%, 40%);
+    position: absolute;
+    z-index: 2;
+}
+
+.text-area h2,
+.output h2 {
+    font-size: 38px;
+    font-family: sans-serif;
+    color: rgb(3, 75, 75);
+    text-align: center;
+    margin: 2vh auto;
+}
+
+.text-area #text,
+.output #output {
+    border: 2px solid rgb(2, 28, 61);
+    overflow-y: scroll;
+    font-size: 24px;
+    width: 100%;
+    height: 50vh;
+    resize: none;
+    padding: 0.5vw;
+}
+
+.lower-area {
+    width: max-content;
+    height: max-content;
+    margin: 2vh auto;
+}
+
+.lower-area #lines,
+.lower-area #button {
+    font-size: 20px;
+    background-color: white;
+    color: rgb(2, 28, 61);
+    border: 3.5px solid rgb(2, 28, 61);
+}
+
+.lower-area #lines {
+    width: 5vw;
+    height: 6vh;
+    padding-left: 0.15vw;
+    overflow-x: hidden;
+}
+
+.lower-area #button {
+    width: 8vw;
+    height: 6vh;
+    text-align: center;
+    box-shadow: 2px 2px 1px black;
+    color: white;
+    border: none;
+    background-color: rgb(2, 28, 61);
+}
+
+.lower-area #button:active {
+    box-shadow: none;
+}
